@@ -152,11 +152,11 @@ func (s *Session) run(ctx context.Context) {
 			s.bs.wm.WantBlocks(ctx, live, nil, s.id)
 
 			if len(live) > 0 {
-				go func() {
-					for p := range s.bs.network.FindProvidersAsync(ctx, live[0], 10) {
+				go func(k *cid.Cid) {
+					for p := range s.bs.network.FindProvidersAsync(ctx, k, 10) {
 						newpeers <- p
 					}
-				}()
+				}(live[0])
 			}
 			s.resetTick()
 		case p := <-newpeers:
