@@ -25,7 +25,7 @@ import (
 	unit "github.com/ipfs/go-ipfs/thirdparty/unit"
 	"gx/ipfs/QmRWDav6mzWseLWeYfVd5fvUKiVe9xNH29YfMF438fG364/go-datastore"
 	syncds "gx/ipfs/QmRWDav6mzWseLWeYfVd5fvUKiVe9xNH29YfMF438fG364/go-datastore/sync"
-	commands "gx/ipfs/QmUZBejTzVRuN8ubr2LC8FG7YexRMsNnzM2s2Pi4JxJd5P/go-ipfs-cmds"
+	commands "gx/ipfs/QmZro8GXyJpJWtjrrSEr78dBdkZQ8ZnNjoCNB9FLEQWyRt/go-ipfs-cmds"
 
 	context "context"
 	pstore "gx/ipfs/QmNUVzEjq3XWJ89hegahPvyfJbTXgTaom48pLb7YBD9gHQ/go-libp2p-peerstore"

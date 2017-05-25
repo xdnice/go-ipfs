@@ -12,9 +12,9 @@ import (
 	e "github.com/ipfs/go-ipfs/core/commands/e"
 	"github.com/ipfs/go-ipfs/filestore"
 
-	cmds "gx/ipfs/QmUZBejTzVRuN8ubr2LC8FG7YexRMsNnzM2s2Pi4JxJd5P/go-ipfs-cmds"
+	"gx/ipfs/QmWdiBLZ22juGtuNceNbvvHV11zKzCaoQFMP76x2w1XDFZ/go-ipfs-cmdkit"
 	cid "gx/ipfs/QmYhQaCYEcaPPjxJX7YcPcVKkQfRy6sJ7B3XmGFk82XYdQ/go-cid"
-	"gx/ipfs/Qmf7G7FikwUsm48Jm4Yw4VBGNZuyRaAMzpWDJcW8V71uV2/go-ipfs-cmdkit"
+	cmds "gx/ipfs/QmZro8GXyJpJWtjrrSEr78dBdkZQ8ZnNjoCNB9FLEQWyRt/go-ipfs-cmds"
 )
 
 var FileStoreCmd = &cmds.Command{
@@ -55,10 +55,7 @@ The output is:
 	Run: func(req cmds.Request, re cmds.ResponseEmitter) {
 		_, fs, err := getFilestore(req.InvocContext())
 		if err != nil {
-			err2 := re.SetError(err, cmdsutil.ErrNormal)
-			if err2 != nil {
-				log.Error(err)
-			}
+			re.SetError(err, cmdsutil.ErrNormal)
 			return
 		}
 		args := req.Arguments()
@@ -71,10 +68,7 @@ The output is:
 		} else {
 			next, err := filestore.ListAll(fs)
 			if err != nil {
-				err2 := re.SetError(err, cmdsutil.ErrNormal)
-				if err2 != nil {
-					log.Error(err)
-				}
+				re.SetError(err, cmdsutil.ErrNormal)
 				return
 			}
 
@@ -122,22 +116,14 @@ The output is:
 					// all good
 				} else if err == cmds.ErrRcvdError {
 					e := res.Error()
-					err := re.SetError(e.Message, e.Code)
-					if err != nil {
-						log.Error(err)
-					}
+					re.SetError(e.Message, e.Code)
+
 				} else {
-					err2 := re.SetError(err, cmdsutil.ErrNormal)
-					if err2 != nil {
-						log.Error(err)
-					}
+					re.SetError(err, cmdsutil.ErrNormal)
 				}
 
 				if errors {
-					err := re.SetError("errors while displaying some entries", cmdsutil.ErrNormal)
-					if err != nil {
-						log.Error(err)
-					}
+					re.SetError("errors while displaying some entries", cmdsutil.ErrNormal)
 				}
 			}()
 

@@ -16,10 +16,10 @@ import (
 	mfs "github.com/ipfs/go-ipfs/mfs"
 	ft "github.com/ipfs/go-ipfs/unixfs"
 
-	"gx/ipfs/QmUZBejTzVRuN8ubr2LC8FG7YexRMsNnzM2s2Pi4JxJd5P/go-ipfs-cmds"
+	"gx/ipfs/QmWdiBLZ22juGtuNceNbvvHV11zKzCaoQFMP76x2w1XDFZ/go-ipfs-cmdkit"
+	"gx/ipfs/QmWdiBLZ22juGtuNceNbvvHV11zKzCaoQFMP76x2w1XDFZ/go-ipfs-cmdkit/files"
+	"gx/ipfs/QmZro8GXyJpJWtjrrSEr78dBdkZQ8ZnNjoCNB9FLEQWyRt/go-ipfs-cmds"
 	"gx/ipfs/QmeWjRodbcZFKe5tMN7poEx3izym6osrLSnTLf9UjJZBbs/pb"
-	"gx/ipfs/Qmf7G7FikwUsm48Jm4Yw4VBGNZuyRaAMzpWDJcW8V71uV2/go-ipfs-cmdkit"
-	"gx/ipfs/Qmf7G7FikwUsm48Jm4Yw4VBGNZuyRaAMzpWDJcW8V71uV2/go-ipfs-cmdkit/files"
 )
 
 // ErrDepthLimitExceeded indicates that the max depth has been exceded.
@@ -131,19 +131,13 @@ You can now refer to the added file in a gateway, like so:
 	Run: func(req cmds.Request, re cmds.ResponseEmitter) {
 		n, err := req.InvocContext().GetNode()
 		if err != nil {
-			err2 := re.SetError(err, cmdsutil.ErrNormal)
-			if err2 != nil {
-				log.Error(err)
-			}
+			re.SetError(err, cmdsutil.ErrNormal)
 			return
 		}
 
 		cfg, err := n.Repo.Config()
 		if err != nil {
-			err2 := re.SetError(err, cmdsutil.ErrNormal)
-			if err2 != nil {
-				log.Error(err)
-			}
+			re.SetError(err, cmdsutil.ErrNormal)
 			return
 		}
 		// check if repo will exceed storage limit if added
@@ -167,12 +161,8 @@ You can now refer to the added file in a gateway, like so:
 		fscache, _, _ := req.Option(fstoreCacheOptionName).Bool()
 
 		if nocopy && !cfg.Experimental.FilestoreEnabled {
-			err2 := re.SetError(errors.New("filestore is not enabled, see https://git.io/vy4XN"),
+			re.SetError(errors.New("filestore is not enabled, see https://git.io/vy4XN"),
 				cmdsutil.ErrClient)
-			if err2 != nil {
-				log.Error(err)
-			}
-
 			return
 		}
 
@@ -181,11 +171,7 @@ You can now refer to the added file in a gateway, like so:
 		}
 
 		if nocopy && !rawblks {
-			err2 := re.SetError(fmt.Errorf("nocopy option requires '--raw-leaves' to be enabled as well"), cmdsutil.ErrNormal)
-			if err2 != nil {
-				log.Error(err)
-			}
-
+			re.SetError(fmt.Errorf("nocopy option requires '--raw-leaves' to be enabled as well"), cmdsutil.ErrNormal)
 			return
 		}
 
@@ -196,10 +182,7 @@ You can now refer to the added file in a gateway, like so:
 				NilRepo: true,
 			})
 			if err != nil {
-				err2 := re.SetError(err, cmdsutil.ErrNormal)
-				if err2 != nil {
-					log.Error(err)
-				}
+				re.SetError(err, cmdsutil.ErrNormal)
 				return
 			}
 			n = nilnode
@@ -223,10 +206,7 @@ You can now refer to the added file in a gateway, like so:
 
 		fileAdder, err := coreunix.NewAdder(req.Context(), n.Pinning, n.Blockstore, dserv)
 		if err != nil {
-			err2 := re.SetError(err, cmdsutil.ErrNormal)
-			if err2 != nil {
-				log.Error(err)
-			}
+			re.SetError(err, cmdsutil.ErrNormal)
 			return
 		}
 
@@ -245,10 +225,7 @@ You can now refer to the added file in a gateway, like so:
 			md := dagtest.Mock()
 			mr, err := mfs.NewRoot(req.Context(), md, ft.EmptyDirNode(), nil)
 			if err != nil {
-				err2 := re.SetError(err, cmdsutil.ErrNormal)
-				if err2 != nil {
-					log.Error(err)
-				}
+				re.SetError(err, cmdsutil.ErrNormal)
 				return
 			}
 
@@ -285,24 +262,24 @@ You can now refer to the added file in a gateway, like so:
 			return fileAdder.PinRoot()
 		}
 
+		errCh := make(chan error)
 		go func() {
+			var err error
+			defer func() { errCh <- err }()
 			defer close(outChan)
-			err := addAllAndPin(req.Files())
-			if err != nil {
-				err2 := re.SetError(err, cmdsutil.ErrNormal)
-				if err2 != nil {
-					log.Error(err)
-				}
-			}
+			err = addAllAndPin(req.Files())
 		}()
 
 		defer re.Close()
-		for v := range outChan {
-			err := re.Emit(v)
-			if err != nil {
-				log.Error(err)
-				return
-			}
+
+		err = re.Emit(outChan)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		err = <-errCh
+		if err != nil {
+			re.SetError(err, cmdsutil.ErrNormal)
 		}
 	},
 	PostRun: map[cmds.EncodingType]func(cmds.Request, cmds.ResponseEmitter) cmds.ResponseEmitter{
@@ -396,11 +373,7 @@ You can now refer to the added file in a gateway, like so:
 							bar.ShowTimeLeft = true
 						}
 					case <-req.Context().Done():
-						err2 := re.SetError(req.Context().Err(), cmdsutil.ErrNormal)
-						if err2 != nil {
-							log.Error(req.Context().Err(), err2)
-						}
-
+						re.SetError(req.Context().Err(), cmdsutil.ErrNormal)
 						return
 					}
 				}
@@ -411,12 +384,8 @@ You can now refer to the added file in a gateway, like so:
 				defer re.Close()
 
 				if e := res.Error(); e != nil {
-					err2 := re.SetError(e.Message, e.Code)
-					if err2 != nil {
-						log.Error(e, err2)
-					}
-
-					close(outChan)
+					defer close(outChan)
+					re.SetError(e.Message, e.Code)
 					return
 				}
 
@@ -435,19 +404,9 @@ You can now refer to the added file in a gateway, like so:
 						}
 
 						if e, ok := err.(*cmdsutil.Error); ok {
-							err2 := re.SetError(e.Message, e.Code)
-							if err2 != nil {
-								log.Error(err)
-							}
-
-						}
-
-						if err != io.EOF {
-							err2 := re.SetError(err, cmdsutil.ErrNormal)
-							if err2 != nil {
-								log.Error(err)
-							}
-
+							re.Emit(e)
+						} else if err != io.EOF {
+							re.SetError(err, cmdsutil.ErrNormal)
 						}
 
 						return
