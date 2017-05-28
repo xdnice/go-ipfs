@@ -706,26 +706,33 @@ func listenAddresses(cfg *config.Config) ([]ma.Multiaddr, error) {
 	return listen, nil
 }
 
-type ConstructPeerHostOpts struct {
-	DisableNatPortMap bool
+type HostConfig struct {
+	StreamMuxer        smux.Transport
+	BandwidthReporting metrics.Reporter
+	DisableNatPortMap  bool
+	SwarmAddrFilters   []*net.IPNet
+	AddrFactory
+	PrivateNetworking ipnet.Protector
 }
 
-type HostOption func(ctx context.Context, id peer.ID, ps pstore.Peerstore, bwr metrics.Reporter, fs []*net.IPNet, tpt smux.Transport, protc ipnet.Protector, opts *ConstructPeerHostOpts) (p2phost.Host, error)
+type HostOption func(ctx context.Context, id peer.ID, ps pstore.Peerstore, opts interface{}) (p2phost.Host, error)
 
 var DefaultHostOption HostOption = constructPeerHost
 
 // isolates the complex initialization steps
-func constructPeerHost(ctx context.Context, id peer.ID, ps pstore.Peerstore, bwr metrics.Reporter, fs []*net.IPNet, tpt smux.Transport, protec ipnet.Protector, opts *ConstructPeerHostOpts) (p2phost.Host, error) {
+// func constructPeerHost(ctx context.Context, id peer.ID, ps pstore.Peerstore, bwr metrics.Reporter, fs []*net.IPNet, tpt smux.Transport, protec ipnet.Protector, opts *ConstructPeerHostOpts) (p2phost.Host, error) {
+func constructPeerHost(ctx context.Context, id peer.ID, ps pstore.Peerstore, opts interface{}) (p2phost.Host, error) {
+	options := opts.(*HostConfig)
 
 	// no addresses to begin with. we'll start later.
-	swrm, err := swarm.NewSwarmWithProtector(ctx, nil, id, ps, protec, tpt, bwr)
+	swrm, err := swarm.NewSwarmWithProtector(ctx, nil, id, ps, options.PrivateNetworking, options.StreamMuxer, options.BandwidthReporting)
 	if err != nil {
 		return nil, err
 	}
 
 	network := (*swarm.Network)(swrm)
 
-	for _, f := range fs {
+	for _, f := range options.SwarmAddrFilters {
 		network.Swarm().Filters.AddDialFilter(f)
 	}
 
